@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Трекер привычек</title>
+  <style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body[data-theme="dark"] {
+  --bg:#0f1420; --card:#1a2133; --panel:#161d2e; --border:#2a3245;
+  --text:#e8ecf4; --muted:#8a93a6; --accent:#4f7cff; --accent2:#5dd39e;
+  --day:#101728; --danger:#ff6b6b;
+}
+body[data-theme="light"] {
+  --bg:#f4f6fb; --card:#ffffff; --panel:#eef1f8; --border:#dde2ee;
+  --text:#1d2433; --muted:#6d7590; --accent:#4f7cff; --accent2:#1fa567;
+  --day:#e8ecf6; --danger:#e05252;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  max-width: 640px; margin: 0 auto; padding: 24px 16px;
+  transition: background .2s, color .2s;
+}
+.top { display: flex; justify-content: space-between; align-items: center; }
+h1 { font-size: 1.5rem; }
+.theme-btn {
+  border: 1px solid var(--border); background: var(--card); color: var(--text);
+  border-radius: 10px; padding: 8px 10px; cursor: pointer; font-size: 1rem;
+}
+.date { color: var(--muted); font-size: .9rem; margin-bottom: 16px; }
+
+.panel {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px; margin-bottom: 14px;
+}
+.panel h2 { font-size: .85rem; color: var(--muted); margin-bottom: 10px; }
+
+.stat-line { display: flex; justify-content: space-between; font-size: .85rem; color: var(--muted); margin: 8px 0 6px; }
+.stat-line b { color: var(--text); }
+.progress { height: 8px; background: var(--day); border-radius: 6px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #8fa8ff); border-radius: 6px; }
+
+.bars { display: flex; gap: 6px; align-items: flex-end; height: 80px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.bar { width: 100%; min-height: 3px; background: var(--accent); border-radius: 4px 4px 0 0; }
+.bar-label { font-size: .6rem; color: var(--muted); margin-top: 4px; }
+
+.badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge {
+  display: inline-flex; flex-direction: column; align-items: center;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 10px; font-size: .65rem; color: var(--muted);
+  min-width: 76px; text-align: center;
+}
+.badge span { font-size: 1.3rem; }
+.badge.locked { opacity: .3; filter: grayscale(1); }
+
+.add-form { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+.add-row { display: flex; gap: 8px; }
+.add-form input[type="text"], .add-form select {
+  padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-size: 1rem; min-width: 0;
+}
+.add-form input[type="text"] { flex: 1; }
+.add-form input::placeholder { color: var(--muted); }
+.add-btn {
+  padding: 12px 16px; border: none; border-radius: 10px;
+  background: var(--accent); color: #fff; font-size: 1rem; cursor: pointer; white-space: nowrap;
+}
+.add-btn:hover { filter: brightness(1.1); }
+.file-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--card); cursor: pointer; font-size: 1rem;
+}
+
+.cat-header {
+  margin: 18px 0 10px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; font-size: .72rem; letter-spacing: .05em;
+}
+.cat-count {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 2px 7px; margin-left: 4px;
+}
+
+.habit {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px; margin-bottom: 10px;
+}
+.habit-header { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.drag-handle { cursor: grab; color: var(--muted); padding: 0 2px; user-select: none; }
+.h-emoji { font-size: 1.4rem; }
+.h-img { width: 28px; height: 28px; border-radius: 8px; object-fit: cover; }
+.habit-title { flex: 1; min-width: 0; }
+.habit-name { font-weight: 600; font-size: 1.02rem; }
+.habit.done-today .habit-name { color: var(--accent2); }
+.streak { color: var(--muted); font-size: .8rem; margin-top: 3px; }
+.actions { display: flex; gap: 4px; }
+.actions button {
+  border: none; background: transparent; color: var(--muted);
+  cursor: pointer; font-size: .9rem; padding: 4px 5px; border-radius: 6px;
+}
+.actions button:hover { background: var(--day); color: var(--text); }
+.actions button:hover[data-action="del"] { color: var(--danger); }
+.habit-body { margin-top: 12px; }
+.btn-today {
+  border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer;
+  font-size: .85rem; background: var(--day); color: var(--text);
+}
+.week { display: flex; gap: 6px; margin-top: 10px; }
+.day {
+  flex: 1; max-width: 44px; aspect-ratio: 1; border-radius: 8px;
+  background: var(--day); border: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: .62rem; color: var(--muted); cursor: pointer; user-select: none;
+}
+.day:hover { border-color: var(--accent); }
+.day.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
+.day.today { outline: 2px solid var(--text); outline-offset: 1px; }
+.empty { color: var(--muted); text-align: center; padding: 32px 0; }
+  </style>
+</head>
+<body data-theme="dark">
+  <div class="top">
+    <h1>Трекер привычек</h1>
+    <button id="theme-btn" class="theme-btn" title="Сменить тему">☀️</button>
+  </div>
+  <div class="date" id="today-date"></div>
+
+  <section class="panel">
+    <h2>📊 Статистика</h2>
+    <div id="stats"></div>
+  </section>
+
+  <section class="panel">
+    <h2>🏅 Достижения</h2>
+    <div id="badges"></div>
+  </section>
+
+  <form class="add-form" id="add-form">
+    <input type="text" id="habit-input" placeholder="Новая привычка, например «Читать 20 минут»" maxlength="60">
+    <div class="add-row">
+      <input type="text" id="habit-cat" placeholder="Категория" list="cat-list" maxlength="20">
+      <select id="habit-icon" title="Иконка">
+        <option value="">Иконка</option>
+        <option>🔥</option><option>📚</option><option>💪</option><option>🧘</option>
+        <option>💧</option><option>🎯</option><option>🏃</option><option>🌱</option>
+      </select>
+      <label class="file-btn" title="Своя картинка">🖼<input type="file" id="habit-img" accept="image/*" hidden></label>
+      <button type="submit" class="add-btn">Добавить</button>
+    </div>
+  </form>
+
+  <datalist id="cat-list"></datalist>
+  <div id="habit-list"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  const storage = (() => {
+    try {
+      localStorage.setItem('__test', '1');
+      localStorage.removeItem('__test');
+      return localStorage;
+    } catch (e) {
+      let mem = {};
+      return {
+        getItem: k => (k in mem ? mem[k] : null),
+        setItem: (k, v) => { mem[k] = String(v); },
+        removeItem: k => { delete mem[k]; }
+      };
+    }
+  })();
+
+  const DATA_KEY = 'habit-tracker-v2';
+  let data = { habits: [], theme: 'dark' };
+  try {
+    const raw = storage.getItem(DATA_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.habits)) data = parsed;
+    }
+  } catch (e) {}
+
+  function save() { storage.setItem(DATA_KEY, JSON.stringify(data)); }
+
+  const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const todayKey = () => new Date().toISOString().slice(0, 10);
+
+  function currentWeek() {
+    const now = new Date();
+    const dow = (now.getDay() + 6) % 7;
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(now.getDate() - dow + i);
+      return d;
+    });
+  }
+
+  function plural(n) {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'день';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'дня';
+    return 'дней';
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function streak(h) {
+    let n = 0;
+    const d = new Date();
+    if (!h.checks.includes(todayKey())) d.setDate(d.getDate() - 1);
+    while (h.checks.includes(d.toISOString().slice(0, 10))) {
+      n++;
+      d.setDate(d.getDate() - 1);
+    }
+    return n;
+  }
+
+  function stats() {
+    const tk = todayKey();
+    const weekKeys = currentWeek().map(d => d.toISOString().slice(0, 10));
+    const elapsed = weekKeys.filter(k => k <= tk).length || 1;
+    const weekDone = data.habits.reduce((s, h) =>
+      s + h.checks.filter(k => weekKeys.includes(k) && k <= tk).length, 0);
+    const weekTotal = data.habits.length * elapsed;
+
+    const act = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const k = d.toISOString().slice(0, 10);
+      act.push({
+        label: DAYS[(d.getDay() + 6) % 7],
+        count: data.habits.reduce((s, h) => s + h.checks.includes(k), 0)
+      });
+    }
+
+    const monthPrefix = tk.slice(0, 7);
+    const monthDone = data.habits.reduce((s, h) =>
+      s + h.checks.filter(k => k.startsWith(monthPrefix) && k <= tk).length, 0);
+    const monthTotal = data.habits.length * new Date().getDate();
+
+    const totalAll = data.habits.reduce((s, h) => s + h.checks.filter(k => k <= tk).length, 0);
+    const maxStreak = data.habits.reduce((m, h) => Math.max(m, streak(h)), 0);
+
+    return {
+      weekDone, weekTotal, weekPct: Math.round(weekDone / weekTotal * 100),
+      act, monthDone, monthTotal, monthPct: Math.round(monthDone / monthTotal * 100),
+      totalAll, maxStreak
+    };
+  }
+
+  const BADGES = [
+    { icon: '🌱', name: 'Первый шаг',        test: s => s.totalAll >= 1 },
+    { icon: '🔥', name: '5 дней подряд',     test: s => s.maxStreak >= 5 },
+    { icon: '💥', name: '10 дней подряд',    test: s => s.maxStreak >= 10 },
+    { icon: '🏆', name: '30 дней подряд',    test: s => s.maxStreak >= 30 },
+    { icon: '📅', name: 'Идеальная неделя',  test: s => s.weekTotal > 0 && s.weekDone === s.weekTotal },
+    { icon: '💯', name: '50 выполнений',     test: s => s.totalAll >= 50 }
+  ];
+
+  function renderStats() {
+    const s = stats();
+    const maxAct = Math.max(1, ...s.act.map(a => a.count));
+    document.getElementById('stats').innerHTML = `
+      <div class="stat-line"><span>Выполнение за неделю</span><b>${s.weekPct}%</b></div>
+      <div class="progress"><div class="progress-fill" style="width:${s.weekPct}%"></div></div>
+      <div class="stat-line"><span>Активность за 7 дней</span></div>
+      <div class="bars">${s.act.map(a => `
+        <div class="bar-col">
+          <div class="bar" style="height:${Math.round(a.count / maxAct * 100)}%"></div>
+          <span class="bar-label">${a.label}</span>
+        </div>`).join('')}</div>
+      <div class="stat-line"><span>Выполнено за месяц</span><b>${s.monthDone} из ${s.monthTotal} · ${s.monthPct}%</b></div>
+      <div class="progress"><div class="progress-fill" style="width:${s.monthPct}%"></div></div>`;
+  }
+
+  function renderBadges() {
+    const s = stats();
+    document.getElementById('badges').innerHTML = BADGES.map(b => {
+      const ok = b.test(s);
+      return `<span class="badge ${ok ? '' : 'locked'}"><span>${b.icon}</span>${b.name}</span>`;
+    }).join('');
+  }
+
+  function iconHtml(h) {
+    if (h.img) return `<img class="h-img" src="${h.img}" alt="">`;
+    if (h.icon) return `<span class="h-emoji">${h.icon}</span>`;
+    return '';
+  }
+
+  function habitHtml(h, tk) {
+    const sv = streak(h);
+    const grid = currentWeek().map((d, i) => {
+      const key = d.toISOString().slice(0, 10);
+      return `<div class="day ${h.checks.includes(key) ? 'checked' : ''} ${key === tk ? 'today' : ''}"
+                    data-action="toggle" data-id="${h.id}" data-date="${key}">
+                <span>${DAYS[i]}</span><span>${d.getDate()}</span></div>`;
+    }).join('');
+
+    return `
+      <div class="habit ${h.checks.includes(tk) ? 'done-today' : ''}" data-id="${h.id}">
+        <div class="habit-header" data-action="collapse" data-id="${h.id}">
+          <span class="drag-handle" draggable="true" data-id="${h.id}">⠿</span>
+          ${iconHtml(h)}
+          <div class="habit-title">
+            <div class="habit-name">${esc(h.name)}</div>
+            <div class="streak">${sv > 0 ? `🔥 Серия: ${sv} ${plural(sv)}` : 'Серия: 0 дней'} · ${h.collapsed ? 'раскрыть ▾' : 'свернуть ▴'}</div>
+          </div>
+          <div class="actions">
+            <button data-action="up" data-id="${h.id}" title="Выше">▲</button>
+            <button data-action="down" data-id="${h.id}" title="Ниже">▼</button>
+            <button data-action="edit" data-id="${h.id}" title="Редактировать">✏️</button>
+            <button data-action="img" data-id="${h.id}" title="Своя картинка">🖼</button>
+            <button data-action="del" data-id="${h.id}" title="Удалить">✕</button>
+          </div>
+        </div>
+        <div class="habit-body">
+          <button class="btn-today" data-action="today" data-id="${h.id}">
+            ${h.checks.includes(tk) ? 'Отменить' : 'Сделано сегодня'}
+          </button>
+          ${h.collapsed ? '' : `<div class="week">${grid}</div>`}
+        </div>
+      </div>`;
+  }
+
+  function renderList() {
+    const list = document.getElementById('habit-list');
+    const tk = todayKey();
+    if (!data.habits.length) {
+      list.innerHTML = '<div class="empty">Пока пусто. Добавьте первую привычку 🙂</div>';
+      return;
+    }
+    const groups = [];
+    data.habits.forEach(h => {
+      const cat = h.category || 'Без категории';
+      let g = groups.find(x => x.cat === cat);
+      if (!g) { g = { cat, items: [] }; groups.push(g); }
+      g.items.push(h);
+    });
+    list.innerHTML = groups.map(g => `
+      <div class="cat-header">${esc(g.cat)} <span class="cat-count">${g.items.length}</span></div>
+      ${g.items.map(h => habitHtml(h, tk)).join('')}`).join('');
+  }
+
+  function render() {
+    applyTheme();
+    renderStats();
+    renderBadges();
+    renderList();
+    const cats = [...new Set(data.habits.map(h => h.category || 'Без категории'))];
+    document.getElementById('cat-list').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+  }
+
+  const themeBtn = document.getElementById('theme-btn');
+  function applyTheme() {
+    document.body.dataset.theme = data.theme;
+    themeBtn.textContent = data.theme === 'dark' ? '☀️' : '🌙';
+  }
+  themeBtn.addEventListener('click', () => {
+    data.theme = data.theme === 'dark' ? 'light' : 'dark';
+    save(); applyTheme();
+  });
+
+  const list = document.getElementById('habit-list');
+
+  function toggleCheck(h, key) {
+    h.checks = h.checks.includes(key) ? h.checks.filter(x => x !== key) : [...h.checks, key];
+    save(); render();
+  }
+
+  list.addEventListener('click', e => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    const h = data.habits.find(x => String(x.id) === el.dataset.id);
+    if (!h) return;
+
+    if (action === 'toggle') { toggleCheck(h, el.dataset.date); return; }
+    if (action === 'today')  { toggleCheck(h, todayKey()); return; }
+    if (action === 'collapse') { h.collapsed = !h.collapsed; save(); render(); return; }
+    if (action === 'up' || action === 'down') {
+      const i = data.habits.indexOf(h);
+      const j = action === 'up' ? i - 1 : i + 1;
+      if (j >= 0 && j < data.habits.length) {
+        [data.habits[i], data.habits[j]] = [data.habits[j], data.habits[i]];
+        save(); render();
+      }
+      return;
+    }
+    if (action === 'edit') {
+      const name = prompt('Новое название:', h.name);
+      if (name === null) return;
+      if (name.trim()) h.name = name.trim();
+      const cat = prompt('Категория:', h.category || '');
+      if (cat !== null) h.category = cat.trim() || 'Без категории';
+      const icon = prompt('Иконка (эмодзи, можно пусто):', h.icon || '');
+      if (icon !== null) h.icon = icon.trim() || null;
+      save(); render();
+      return;
+    }
+    if (action === 'img') { currentImgHabit = h.id; imgInput.click(); return; }
+    if (action === 'del') {
+      if (confirm('Удалить «' + h.name + '»?')) {
+        data.habits = data.habits.filter(x => x !== h);
+        save(); render();
+      }
+    }
+  });
+
+  let dragId = null;
+  list.addEventListener('dragstart', e => {
+    const handle = e.target.closest('.drag-handle');
+    if (handle) dragId = handle.dataset.id;
+  });
+  list.addEventListener('dragover', e => { if (dragId !== null) e.preventDefault(); });
+  list.addEventListener('drop', e => {
+    if (dragId === null) return;
+    const card = e.target.closest('.habit');
+    if (card) {
+      const from = data.habits.findIndex(h => String(h.id) === dragId);
+      const to = data.habits.findIndex(h => String(h.id) === card.dataset.id);
+      if (from > -1 && to > -1 && from !== to) {
+        const [moved] = data.habits.splice(from, 1);
+        data.habits.splice(to, 0, moved);
+        save(); render();
+      }
+    }
+    dragId = null;
+  });
+
+  const imgInput = document.getElementById('habit-img');
+  const imgLabel = document.querySelector('.file-btn');
+  let pendingImg = null;
+  let currentImgHabit = null;
+
+  function fileToThumb(file) {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = 64; c.height = 64;
+          const s = 64 / Math.max(img.width, img.height);
+          c.getContext('2d').drawImage(img,
+            (64 - img.width * s) / 2, (64 - img.height * s) / 2,
+            img.width * s, img.height * s);
+          resolve(c.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  imgInput.addEventListener('change', () => {
+    const file = imgInput.files[0];
+    imgInput.value = '';
+    if (!file) return;
+    fileToThumb(file).then(url => {
+      if (currentImgHabit != null) {
+        const h = data.habits.find(x => String(x.id) === String(currentImgHabit));
+        if (h) { h.img = url; h.icon = null; save(); render(); }
+        currentImgHabit = null;
+      } else {
+        pendingImg = url;
+        imgLabel.textContent = '✓';
+      }
+    });
+  });
+
+  document.getElementById('add-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const nameInput = document.getElementById('habit-input');
+    const name = nameInput.value.trim();
+    if (!name) return;
+    const cat = document.getElementById('habit-cat').value.trim() || 'Без категории';
+    const icon = document.getElementById('habit-icon').value || null;
+    data.habits.push({ id: Date.now(), name, category: cat, icon, img: pendingImg, checks: [], collapsed: true });
+    nameInput.value = '';
+    document.getElementById('habit-cat').value = '';
+    document.getElementById('habit-icon').value = '';
+    pendingImg = null;
+    imgLabel.textContent = '🖼';
+    save(); render();
+  });
+
+  document.getElementById('today-date').textContent =
+    new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  applyTheme();
+  render();
+});
+</script>
+</body>
+</html>
